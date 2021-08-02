@@ -1,4 +1,5 @@
 #include "ble_wifi_setup_manager.h"
+#include <unistd.h>
 
 #define MAX_ATTR_LEN 512
 
@@ -133,7 +134,8 @@ void BLEWiFiSetupManager::update_status() {
     // wifi info
     const char* ssid = WiFi.SSID();
     WifiStatus wifi_status = WifiStatus::Disconnected;
-    if (ssid) {
+    Log.info("============================Updating status=================");
+    if (WiFi.ready()) {
         wifi_status = WifiStatus::Connected;
     } else {
         ssid = "";
@@ -150,7 +152,7 @@ void BLEWiFiSetupManager::update_status() {
             ssid,
             inet_status_strings[static_cast<int>(inet_status)]
         );
-    //Log.trace("Update status: %s", writer.buffer());
+    Log.info("status: %s", tmp_buf);
     
     // write characteristic
     statusCharacteristic->setValue((uint8_t*)tmp_buf, len);
@@ -183,36 +185,40 @@ void BLEWiFiSetupManager::parse_message() {
                 Log.info("WiFi Scan Complete");
                 // TODO: send status message
             }
-            else
-            if (strcmp((const char *)iter.value().toString(), "set_creds") == 0) {
-                JSONString ssid, pass;
-                while(iter.next()) {
-                    if (iter.name() == "ssid") {
-                        ssid = iter.value().toString();
-                        Log.info("Set WiFi SSID: %s", ssid.data());
-                    }
-                    else if (iter.name() == "password") {
-                        pass = iter.value().toString();
-                        Log.info("Set WiFi Password: %s", pass.data());
-                    }
-                    else {
-                        Log.warn("Unrecognized key while parsing WiFi credentials: %s", (const char *)iter.name());
-                    }
+        
+        } else if (strcmp((const char *)iter.value().toString(), "set_creds") == 0) {
+            JSONString ssid, pass;
+            while(iter.next()) {
+                if (iter.name() == "ssid") {
+                    ssid = iter.value().toString();
+                    Log.info("Set WiFi SSID: %s", ssid.data());
                 }
+                else if (iter.name() == "password") {
+                    pass = iter.value().toString();
+                    Log.info("Set WiFi Password: %s", pass.data());
+                }
+                else {
+                    Log.warn("Unrecognized key while parsing WiFi credentials: %s", (const char *)iter.name());
+                }
+            }
 
-                if (!ssid.isEmpty() && !pass.isEmpty()) {
-                    WiFi.setCredentials(ssid.data(), pass.data());
-                    if (provisionCb != nullptr) {
-                        provisionCb();
-                    }
-                    Log.info("WiFi credentials set");
-                    if (WiFi.ready() || WiFi.connecting()) {
-                        WiFi.disconnect();
-                    }
-                    WiFi.connect();
-                } else {
-                    Log.warn("Failure parsing WiFi credentials");
+            if (!ssid.isEmpty() && !pass.isEmpty()) {
+                WiFi.setCredentials(ssid.data(), pass.data());
+                if (provisionCb != nullptr) {
+                    provisionCb();
                 }
+                Log.info("WiFi credentials set");
+                if (WiFi.ready() || WiFi.connecting()) {
+                    WiFi.disconnect();
+                }
+                WiFi.connect();
+                //Particle.connect();
+                // wait until we have an IP address and connected to Particle cloud
+                // this takes forever
+                waitFor(WiFi.ready, 30000);
+                Log.info("------------------------------ READY --------------");
+            } else {
+                Log.warn("Failure parsing WiFi credentials");
             }
         }
     }
