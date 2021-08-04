@@ -46,6 +46,7 @@ BLEWiFiSetupManager::BLEWiFiSetupManager()
 {}
 
 void BLEWiFiSetupManager::setup() {
+    
     rxCharacteristic = new BleCharacteristic("rx", BleCharacteristicProperty::NOTIFY, readUUID, serviceUUID);
     txCharacteristic = new BleCharacteristic("tx", BleCharacteristicProperty::WRITE_WO_RSP, writeUUID, serviceUUID, onDataReceived, this);
     statusCharacteristic = new BleCharacteristic("status", BleCharacteristicProperty::READ, statusUUID, serviceUUID);
@@ -134,7 +135,6 @@ void BLEWiFiSetupManager::update_status() {
     // wifi info
     const char* ssid = WiFi.SSID();
     WifiStatus wifi_status = WifiStatus::Disconnected;
-    Log.info("============================Updating status=================");
     if (WiFi.ready()) {
         wifi_status = WifiStatus::Connected;
     } else {
@@ -212,11 +212,8 @@ void BLEWiFiSetupManager::parse_message() {
                     WiFi.disconnect();
                 }
                 WiFi.connect();
-                //Particle.connect();
-                // wait until we have an IP address and connected to Particle cloud
-                // this takes forever
+                // wait until we have an IP address or timeout 
                 waitFor(WiFi.ready, 30000);
-                Log.info("------------------------------ READY --------------");
             } else {
                 Log.warn("Failure parsing WiFi credentials");
             }
