@@ -214,6 +214,7 @@ void BLEWiFiSetupManager::parse_message() {
                 WiFi.connect();
                 // wait until we have an IP address or timeout 
                 waitFor(WiFi.ready, 30000);
+                Ethernet.listen(false); //force exit of listening mode if we are in it
             } else {
                 Log.warn("Failure parsing WiFi credentials");
             }
